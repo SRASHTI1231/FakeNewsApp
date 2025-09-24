@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 """
 LSSDP: NLP-Based Fake vs Real Detection
 Phase-wise NLP pipeline for Fake vs Real statement classification using Naive Bayes
@@ -183,7 +183,7 @@ if st.button("Predict"):
         prediction = model.predict(vec_input)[0]  # use your trained NB model
         label = "🟢 Real" if prediction == 1 else "🔴 Fake"
         st.subheader(f"Prediction: {label}")
-=======
+
 """
 LSSDP: NLP-Based Fake vs Real Detection
 Phase-wise NLP pipeline for Fake vs Real statement classification using Naive Bayes
@@ -380,4 +380,4 @@ except:
 
 
 
->>>>>>> a99135e9600eb742bde7fb0a53850a09cda79086
+
