@@ -182,3 +182,14 @@ if st.button("Predict"):
         prediction = model.predict(vec_input)[0]  # use your trained NB model
         label = "🟢 Real" if prediction == 1 else "🔴 Fake"
         st.subheader(f"Prediction: {label}")
+
+import spacy
+
+try:
+    nlp = spacy.load("en_core_web_sm")
+except:
+    import spacy.cli
+    spacy.cli.download("en_core_web_sm")
+    nlp = spacy.load("en_core_web_sm")
+
+
