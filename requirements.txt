@@ -1,22 +1,10 @@
-<<<<<<< HEAD
-streamlit==1.29.0
-pandas==2.2.0
-numpy==1.25.2
-nltk==3.9.1
-spacy==3.8.0
-textblob==0.17.1
-scikit-learn==1.3.2
-matplotlib==3.8.1
+streamlit==1.28.0
+pandas
+numpy
+nltk
+spacy
+textblob
+scikit-learn
+scipy
+matplotlib
 
-
-=======
-streamlit==1.29.0
-pandas==2.2.0
-numpy==1.25.2
-nltk==3.9.1
-spacy==3.8.0
-textblob==0.17.1
-scikit-learn==1.3.2
-scipy==1.11.2
-matplotlib==3.8.1
->>>>>>> a99135e9600eb742bde7fb0a53850a09cda79086
