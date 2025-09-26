@@ -102,7 +102,7 @@ uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"], label_visibi
 st.info("ℹ️ Upload a CSV with a **text column** and a **label column** to begin analysis.")
 
     
-    if uploaded_file:
+if uploaded_file:
         st.success("File uploaded successfully!")
         df = pd.read_csv(uploaded_file)
         
