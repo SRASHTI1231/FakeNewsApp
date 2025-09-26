@@ -86,20 +86,27 @@ def evaluate_models(X_features, y):
 # ============================
 # Streamlit UI
 # ============================
-st.set_page_config(page_title="NLP Phase Analysis", layout="wide")
+st.set_page_config(
+    page_title="🧠 Fake vs Real NLP Analyzer",
+    page_icon="📊",
+    layout="wide"
+)
 
-st.title("📊 Phase-wise NLP Analysis with Model Comparison")
+
+st.title("📰 Fake vs Real News Detection – NLP Phase-wise Analysis")
 
 # Sidebar for file upload
-with st.sidebar:
-    st.header("📁 Data Input")
-    uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])
+st.header("📁 Upload Your Dataset")
+uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"], label_visibility="visible")
+
+st.info("ℹ️ Upload a CSV with a **text column** and a **label column** to begin analysis.")
+
     
     if uploaded_file:
         st.success("File uploaded successfully!")
         df = pd.read_csv(uploaded_file)
         
-        st.header("⚙️ Configuration")
+        st.header("⚙️ Select Columns & Settings")
         text_col = st.selectbox("Select Text Column:", df.columns)
         target_col = st.selectbox("Select Target Column:", df.columns)
         
@@ -115,12 +122,12 @@ with st.sidebar:
 
 # Main content area
 if uploaded_file:
-    st.write("### 📋 Data Preview")
+    st.write("### 🔎 Dataset Preview")
     st.dataframe(df.head(), use_container_width=True)
     
     if run_analysis:
         st.write("---")
-        st.write(f"### 🔍 Analyzing: {phase}")
+        st.write(f"### 🧠 Running Phase: {phase}")
         
         with st.spinner("Processing data and training models..."):
             X = df[text_col].astype(str)
@@ -155,7 +162,7 @@ if uploaded_file:
 
         # Display results without partitions
         st.write("---")
-        st.subheader("📊 Model Performance Overview")
+        st.subheader("📊 Model Accuracy Comparison")
         
         # Create a single unified visualization
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
@@ -196,7 +203,7 @@ if uploaded_file:
             autotext.set_fontweight('bold')
             autotext.set_fontsize(10)
         
-        ax2.set_title('Performance Distribution\n', fontsize=14, fontweight='bold')
+        ax2.set_title('⚖️ Model Performance Share\n', fontsize=14, fontweight='bold')
         
         plt.tight_layout()
         st.pyplot(fig)
@@ -220,7 +227,7 @@ if uploaded_file:
                     )
         
         # Detailed results table
-        st.write("### 📋 Detailed Results")
+        st.write("### 📋 Accuracy Results Table")
         results_display = results_df.copy()
         results_display["Accuracy"] = results_display["Accuracy"].apply(lambda x: f"{x:.1f}%")
         results_display["Rank"] = range(1, len(results_display) + 1)
@@ -228,7 +235,7 @@ if uploaded_file:
         st.dataframe(results_display, use_container_width=True)
 
 else:
-    st.info("👈 Please upload a CSV file to get started!")
+    st.info("👈 Please upload a CSV file to begin the analysis.")
 
 # Add some styling
 st.markdown("""
