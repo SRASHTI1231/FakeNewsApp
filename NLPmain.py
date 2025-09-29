@@ -17,18 +17,19 @@ from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
 
 import matplotlib.pyplot as plt
-import chardet
+
 
 # ============================
 # Auto Encoding Loader
 # ============================
 def load_csv_auto(path):
-    with open(path, "rb") as f:
-        result = chardet.detect(f.read(100000))  
-        encoding = result["encoding"]
-        confidence = result["confidence"]
-        print(f"Detected encoding: {encoding} (confidence: {confidence:.2f})")
-    return pd.read_csv(path, encoding=encoding, errors="replace")
+    for enc in ["utf-8", "latin1", "ISO-8859-1", "cp1252"]:
+        try:
+            return pd.read_csv(path, encoding=enc, errors="replace")
+        except Exception as e:
+            print(f"Failed with {enc}: {e}")
+    raise ValueError("❌ Could not read file with common encodings.")
+
 
 # ============================
 # Load SpaCy & Globals
