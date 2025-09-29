@@ -19,9 +19,8 @@ from sklearn.metrics import accuracy_score
 import matplotlib.pyplot as plt
 
 # ============================
-# Ultra-Robust CSV Loader
+# Robust CSV Loader
 # ============================
-@st.cache_data
 def load_csv_auto(path):
     encodings = [
         "utf-8", "utf-8-sig", "latin1", "ISO-8859-1", "cp1252", 
@@ -31,12 +30,13 @@ def load_csv_auto(path):
     for enc in encodings:
         try:
             df = pd.read_csv(path, encoding=enc, errors="replace")
-            print(f"✅ Successfully loaded with encoding: {enc}")
+            st.success(f"✅ Successfully loaded CSV with encoding: {enc}")
             return df
         except Exception as e:
             print(f"❌ Failed with {enc}: {e}")
     
-    raise ValueError("❌ Could not read the file with any common encoding.")
+    st.error("❌ Could not read the file with any common encoding.")
+    return pd.DataFrame()  # Prevent crash
 
 # ============================
 # Load SpaCy & Globals
@@ -136,8 +136,10 @@ if uploaded_file:
     with open("temp.csv", "wb") as f:
         f.write(uploaded_file.getbuffer())
 
-    # Load CSV robustly
+    # Use robust loader
     df = load_csv_auto("temp.csv")
+    if df.empty:
+        st.stop()  # Stop app if file couldn't be loaded
 
     # Handle large datasets
     if len(df) > 5000:
@@ -261,7 +263,9 @@ if uploaded_file:
 else:
     st.info("👈 Please upload a CSV file to begin the analysis.")
 
+# ============================
 # Styling
+# ============================
 st.markdown("""
 <style>
     .stButton>button {
