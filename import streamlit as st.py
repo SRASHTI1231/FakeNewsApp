@@ -3,7 +3,6 @@
 # ============================
 import streamlit as st
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
@@ -13,12 +12,11 @@ from sklearn.svm import SVC
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from imblearn.over_sampling import SMOTE
-import time
 
 # ============================
-# FEATURE EXTRACTOR (Placeholder)
+# FEATURE EXTRACTOR
 # ============================
-class NetflixFeatureExtractor:
+class FeatureExtractor:
     def extract_lexical_features(self, texts):
         return pd.DataFrame({"length": texts.str.len()})
 
@@ -34,7 +32,7 @@ class NetflixFeatureExtractor:
 # ============================
 # MODEL TRAINER
 # ============================
-class NetflixModelTrainer:
+class ModelTrainer:
     def __init__(self, use_smote=True):
         self.use_smote = use_smote
         self.models = {
@@ -109,9 +107,14 @@ def setup_sidebar():
 
     uploaded_file = st.sidebar.file_uploader("Upload CSV", type=["csv"])
     use_smote = st.sidebar.checkbox("Enable SMOTE", value=True)
+    enable_fact_check = st.sidebar.checkbox("Enable Fact Check API", value=False)
+    max_fact_checks = st.sidebar.slider("Max Fact Checks per Text", 1, 10, 3)
+
     analyze_clicked = st.sidebar.button("Start Analysis")
 
     st.session_state.use_smote = use_smote
+    st.session_state.enable_fact_check = enable_fact_check
+    st.session_state.max_fact_checks = max_fact_checks
     st.session_state.analyze_clicked = analyze_clicked
 
     if uploaded_file:
@@ -120,11 +123,8 @@ def setup_sidebar():
                 df = pd.read_csv(uploaded_file, encoding='utf-8-sig')
             except UnicodeDecodeError:
                 df = pd.read_csv(uploaded_file, encoding='ISO-8859-1')
-
             st.session_state.df = df
             st.session_state.file_uploaded = True
-
-            st.sidebar.success(f"Loaded {df.shape[0]} rows and {df.shape[1]} columns")
 
             text_col = st.sidebar.selectbox("Text Column", df.columns)
             target_col = st.sidebar.selectbox("Target Column", df.columns)
@@ -152,12 +152,30 @@ def main_content():
     df = st.session_state.df
     config = st.session_state.config
     use_smote = st.session_state.use_smote
+    enable_fact_check = st.session_state.enable_fact_check
+    max_fact_checks = st.session_state.max_fact_checks
 
+    # Dataset overview
     st.subheader("Dataset Overview")
-    st.write(df.head())
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric("Total Records", df.shape[0])
+    with col2:
+        st.metric("Features", df.shape[1])
+    with col3:
+        st.metric("Missing Values", df.isnull().sum().sum())
+    with col4:
+        target_unique = df[config['target_col']].nunique()
+        st.metric("Unique Classes", target_unique)
 
+    # Data preview
+    with st.expander("Data Preview", expanded=True):
+        st.dataframe(df.head(10))
+        st.write(df.describe(include='all'))
+
+    # Analysis
     if st.session_state.analyze_clicked:
-        extractor = NetflixFeatureExtractor()
+        extractor = FeatureExtractor()
         X = df[config['text_col']].astype(str)
         y = df[config['target_col']]
 
@@ -170,18 +188,23 @@ def main_content():
         else:
             X_features = extractor.extract_pragmatic_features(X)
 
-        trainer = NetflixModelTrainer(use_smote=use_smote)
+        trainer = ModelTrainer(use_smote=use_smote)
         results, _ = trainer.train_and_evaluate(X_features, y)
 
         st.subheader("Model Performance")
-        for model, metrics in results.items():
-            st.write(f"**{model}**")
-            st.write(f"Accuracy: {metrics['accuracy']:.2%}")
-            st.write(f"Precision: {metrics['precision']:.3f}")
-            st.write(f"Recall: {metrics['recall']:.3f}")
-            st.write(f"F1 Score: {metrics['f1_score']:.3f}")
-            st.write(f"SMOTE Applied: {metrics['smote_applied']}")
-            st.markdown("---")
+        for model_name, metrics in results.items():
+            with st.expander(model_name):
+                st.write(f"Accuracy: {metrics['accuracy']:.2%}")
+                st.write(f"Precision: {metrics['precision']:.3f}")
+                st.write(f"Recall: {metrics['recall']:.3f}")
+                st.write(f"F1 Score: {metrics['f1_score']:.3f}")
+                st.write(f"SMOTE Applied: {metrics['smote_applied']}")
+
+        # Fact-checking placeholder
+        if enable_fact_check:
+            st.subheader("Fact Check Section")
+            num_texts = st.slider("Number of texts to fact-check", 1, min(20, len(df)), 5)
+            st.info(f"Fact-checking for {num_texts} texts will be implemented here. Max checks per text: {max_fact_checks}")
 
 # ============================
 # MAIN APP
