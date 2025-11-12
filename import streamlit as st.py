@@ -890,3 +890,4 @@ if st.sidebar.button("Check Fact Credibility"):
 
 if __name__ == "__main__":
     app()
+
