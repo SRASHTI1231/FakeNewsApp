@@ -1,12 +1,7 @@
-# ============================
-# STREAMLIT NLP ANALYZER APP (Google Fact Check Focused)
-# ============================
-
 import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
@@ -14,80 +9,9 @@ from sklearn.svm import SVC
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from imblearn.over_sampling import SMOTE
-import time
 
 # ============================
-# GOOGLE FACT CHECK API WRAPPER
-# ============================
-class GoogleFactCheckAPI:
-    def __init__(self):
-        try:
-            self.api_key = st.secrets["GOOGLE_FACTCHECK_API_KEY"]
-        except:
-            self.api_key = None
-            st.warning("Google API Key not found! Fact check won't work.")
-
-    def batch_fact_check(self, texts, max_checks=3):
-        """Fake implementation placeholder: replace with actual API calls"""
-        results = []
-        for text in texts:
-            # This is just a sample structure
-            claims = [
-                {
-                    "text": text[:50] + "...",
-                    "claimReview": [
-                        {
-                            "textualRating": np.random.choice(["True", "False", "Mixed"]),
-                            "publisher": {"name": "FactCheckOrg"},
-                            "url": "#"
-                        }
-                    ],
-                    "claimDate": "2025-11-12"
-                }
-            ]
-            results.append({
-                "text": text,
-                "has_claims": True,
-                "claim_count": len(claims),
-                "fact_check_results": claims
-            })
-        return results
-
-# ============================
-# FACT CHECK VISUALIZER
-# ============================
-class FactCheckVisualizer:
-    @staticmethod
-    def display_claim_analysis(claim):
-        """Display individual claim analysis"""
-        claim_text = claim.get('text', 'No text available')
-        review = claim.get('claimReview', [{}])[0] if claim.get('claimReview') else {}
-        rating = review.get('textualRating', 'Unknown').lower()
-        publisher = review.get('publisher', {}).get('name', 'Unknown Publisher')
-        review_url = review.get('url', '#')
-        claim_date = claim.get('claimDate', 'Unknown date')
-
-        if 'true' in rating:
-            rating_badge = '<span style="color:green; font-weight:bold;">TRUE</span>'
-        elif 'false' in rating:
-            rating_badge = '<span style="color:red; font-weight:bold;">FALSE</span>'
-        elif 'mixed' in rating:
-            rating_badge = '<span style="color:orange; font-weight:bold;">MIXED</span>'
-        else:
-            rating_badge = '<span style="color:gray; font-weight:bold;">UNKNOWN</span>'
-
-        st.markdown(f"""
-        <div style="background-color:#222; padding:10px; border-radius:8px; margin-bottom:8px;">
-            <div><strong>Claim:</strong> {claim_text}</div>
-            <div style="display:flex; justify-content:space-between; margin-top:5px;">
-                <div>Rating: {rating_badge} | Publisher: {publisher}</div>
-                <div style="color:#aaa; font-size:0.8rem;">{claim_date}</div>
-            </div>
-            <div style="margin-top:5px;"><a href="{review_url}" target="_blank" style="color:#4285F4;">View Full Review</a></div>
-        </div>
-        """, unsafe_allow_html=True)
-# ============================
-# SIDEBAR CONFIGURATION
+# Sidebar Configuration
 # ============================
 def setup_sidebar():
     st.sidebar.markdown("<h2 style='color:#FFD700;'>NLP ANALYZER PRO</h2>", unsafe_allow_html=True)
@@ -158,11 +82,18 @@ def setup_sidebar():
         st.session_state.analyze_clicked = False
 
 # ============================
-# MAIN DASHBOARD LAYOUT
+# Fact Check Placeholder
+# ============================
+def show_fact_check_section(df, config, max_checks=3):
+    st.markdown("<h3 style='color:#FFD700;'>FACT CHECK SECTION</h3>", unsafe_allow_html=True)
+    st.info("Fact Check API integration placeholder. Texts would be verified here.")
+
+# ============================
+# Main Content Layout
 # ============================
 def main_content():
     st.markdown("<h1 style='color:#FFD700; text-align:center;'>NLP ANALYZER PRO</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center; color:#ccc;'>Advanced Text Intelligence with Google Fact Check</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:center; color:#ccc;'>Advanced Text Intelligence Platform</p>", unsafe_allow_html=True)
     
     if not st.session_state.get('file_uploaded', False):
         st.info("Upload a CSV file to start analyzing your text data!")
@@ -174,6 +105,7 @@ def main_content():
     enable_fact_check = st.session_state.get('enable_fact_check', True)
     max_fact_checks = st.session_state.get('max_fact_checks', 3)
     
+    # Dataset Overview
     st.markdown("<h3 style='color:#FFD700;'>DATASET OVERVIEW</h3>", unsafe_allow_html=True)
     col1, col2, col3, col4 = st.columns(4)
     with col1:
@@ -196,7 +128,7 @@ def main_content():
             show_fact_check_section(df, config, max_fact_checks)
 
 # ============================
-# FEATURE EXTRACTION & ML
+# Feature Extraction & ML
 # ============================
 def perform_analysis(df, config, use_smote=True):
     st.markdown("<h3 style='color:#FFD700;'>ANALYSIS RESULTS</h3>", unsafe_allow_html=True)
@@ -204,7 +136,7 @@ def perform_analysis(df, config, use_smote=True):
     X = df[config['text_col']].fillna("").astype(str)
     y = df[config['target_col']]
     
-    # Dummy feature extraction: character count + word count
+    # Simple feature extraction: char count + word count
     X_features = pd.DataFrame({
         "char_count": X.apply(len),
         "word_count": X.apply(lambda t: len(t.split()))
@@ -257,3 +189,18 @@ def perform_analysis(df, config, use_smote=True):
     # Recommended model
     best_model = max([v for v in results.values() if "accuracy" in v], key=lambda x: x['accuracy'])
     st.success(f"Recommended Model: {list(results.keys())[list(results.values()).index(best_model)]} with Accuracy {best_model['accuracy']:.2f}")
+
+# ============================
+# Main Application
+# ============================
+def main():
+    if 'file_uploaded' not in st.session_state:
+        st.session_state.file_uploaded = False
+    if 'analyze_clicked' not in st.session_state:
+        st.session_state.analyze_clicked = False
+    
+    setup_sidebar()
+    main_content()
+
+if __name__ == "__main__":
+    main()
