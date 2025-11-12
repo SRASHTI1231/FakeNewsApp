@@ -9,53 +9,46 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 # Sidebar Configuration
 # ============================
 def setup_sidebar():
-    """Setup sidebar with file upload and analysis settings"""
-    st.sidebar.title("🛠 NLP ANALYZER PRO")
-    
-    uploaded_file = st.sidebar.file_uploader(
-        "Upload CSV file", 
-        type=["csv"], 
-        help="Upload your dataset for analysis"
-    )
+    st.sidebar.title("⚙️ NLP ANALYZER PRO")
+    uploaded_file = st.sidebar.file_uploader("Upload CSV file", type=["csv"], help="Upload your dataset")
 
-    # Analysis settings
     st.sidebar.header("Settings")
     use_smote = st.sidebar.checkbox("Enable SMOTE", value=True)
     enable_fact_check = st.sidebar.checkbox("Enable Fact Check API", value=True)
     max_fact_checks = st.sidebar.slider("Max fact checks per text", 1, 10, 3)
-    
+
     if uploaded_file is not None:
         try:
             try:
                 df = pd.read_csv(uploaded_file, encoding='utf-8')
             except UnicodeDecodeError:
                 df = pd.read_csv(uploaded_file, encoding='latin1')
-            
+
             st.session_state.df = df
             st.session_state.file_uploaded = True
             st.session_state.use_smote = use_smote
             st.session_state.enable_fact_check = enable_fact_check
             st.session_state.max_fact_checks = max_fact_checks
-            
+
             st.sidebar.success(f"Loaded {df.shape[0]} rows and {df.shape[1]} columns")
-            
+
             text_col = st.sidebar.selectbox("Text Column", df.columns)
             target_col = st.sidebar.selectbox("Target Column", df.columns)
             feature_type = st.sidebar.selectbox(
                 "Feature Type", ["Lexical", "Semantic", "Syntactic", "Pragmatic"]
             )
-            
+
             st.session_state.config = {
                 'text_col': text_col,
                 'target_col': target_col,
                 'feature_type': feature_type
             }
-            
+
             if st.sidebar.button("Start Analysis"):
                 st.session_state.analyze_clicked = True
             else:
                 st.session_state.analyze_clicked = False
-                
+
         except Exception as e:
             st.sidebar.error(f"Error loading CSV: {str(e)}")
     else:
@@ -66,9 +59,7 @@ def setup_sidebar():
 # Fact Check Section
 # ============================
 class GoogleFactCheckAPI:
-    """Mock API for demo"""
     def batch_fact_check(self, texts, max_checks=3):
-        # Simulated results
         results = []
         for text in texts:
             results.append({
@@ -84,24 +75,22 @@ class GoogleFactCheckAPI:
         return results
 
 def display_fact_check_results(fact_check_results):
-    st.markdown("### Fact Check Results")
+    st.markdown("### 🔍 Fact Check Results")
     for i, result in enumerate(fact_check_results):
         with st.expander(f"Text {i+1}: {result['text'][:50]}..."):
             st.write(result['text'])
             if result['has_claims']:
                 st.write(f"Claims found: {result['claim_count']}")
                 for claim in result['fact_check_results']:
-                    st.markdown(f"- Rating: **{claim['textualRating']}** by {claim['publisher']['name']}")
+                    st.markdown(f"- **Rating:** {claim['textualRating']}  | Publisher: {claim['publisher']['name']}")
             else:
                 st.info("No verified claims found.")
 
 def show_fact_check_section(df, config, max_checks):
     texts = df[config['text_col']].astype(str).tolist()
-    num_texts_to_check = st.slider(
-        "Number of texts to fact-check", 1, min(20, len(texts)), min(5, len(texts))
-    )
+    num_texts_to_check = st.slider("Number of texts to fact-check", 1, min(20, len(texts)), min(5, len(texts)))
     texts_to_check = texts[:num_texts_to_check]
-    
+
     if st.button("Run Fact Check"):
         with st.spinner("Checking facts..."):
             fact_checker = GoogleFactCheckAPI()
@@ -112,43 +101,53 @@ def show_fact_check_section(df, config, max_checks):
 # Main Analysis
 # ============================
 def perform_analysis(df, config, use_smote):
+    st.markdown("<h1 style='text-align:center;color:#ff6600;'>📰 NLP ANALYZER PRO</h1>", unsafe_allow_html=True)
     st.markdown("### Dataset Overview")
-    st.write(df.head(10))
-    st.write(df.describe(include='all'))
+    
+    # Dataset metrics in cards
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.markdown(f"<div style='background-color:#ffcc99;padding:15px;border-radius:10px;text-align:center'><h3>{df.shape[0]}</h3><p>Records</p></div>", unsafe_allow_html=True)
+    with col2:
+        st.markdown(f"<div style='background-color:#99ccff;padding:15px;border-radius:10px;text-align:center'><h3>{df.shape[1]}</h3><p>Features</p></div>", unsafe_allow_html=True)
+    with col3:
+        st.markdown(f"<div style='background-color:#ff9999;padding:15px;border-radius:10px;text-align:center'><h3>{df.isnull().sum().sum()}</h3><p>Missing Values</p></div>", unsafe_allow_html=True)
+    with col4:
+        unique_classes = df[config['target_col']].nunique() if config['target_col'] in df.columns else 0
+        st.markdown(f"<div style='background-color:#99ff99;padding:15px;border-radius:10px;text-align:center'><h3>{unique_classes}</h3><p>Classes</p></div>", unsafe_allow_html=True)
     
     X = df[config['text_col']].astype(str)
     y = df[config['target_col']]
-    
     if y.isnull().any():
         st.error("Target column has missing values!")
         return
     
-    # Simple text feature: length
-    X_features = X.apply(len).values.reshape(-1, 1)
-    
-    # Label encode target
+    # Feature: text length
+    X_features = X.apply(len).values.reshape(-1,1)
     le = LabelEncoder()
     y_encoded = le.fit_transform(y)
     
     X_train, X_test, y_train, y_test = train_test_split(X_features, y_encoded, test_size=0.2, random_state=42)
-    
     model = LogisticRegression(max_iter=500)
     model.fit(X_train, y_train)
-    
     y_pred = model.predict(X_test)
+    
+    # Performance cards
     st.markdown("### Model Performance")
-    st.write({
-        "Accuracy": accuracy_score(y_test, y_pred),
-        "Precision": precision_score(y_test, y_pred, average='weighted'),
-        "Recall": recall_score(y_test, y_pred, average='weighted'),
-        "F1-Score": f1_score(y_test, y_pred, average='weighted')
-    })
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.markdown(f"<div style='background-color:#ffcc99;padding:10px;border-radius:10px;text-align:center'><h4>{accuracy_score(y_test, y_pred):.2f}</h4><p>Accuracy</p></div>", unsafe_allow_html=True)
+    with col2:
+        st.markdown(f"<div style='background-color:#99ccff;padding:10px;border-radius:10px;text-align:center'><h4>{precision_score(y_test, y_pred, average='weighted'):.2f}</h4><p>Precision</p></div>", unsafe_allow_html=True)
+    with col3:
+        st.markdown(f"<div style='background-color:#ff9999;padding:10px;border-radius:10px;text-align:center'><h4>{recall_score(y_test, y_pred, average='weighted'):.2f}</h4><p>Recall</p></div>", unsafe_allow_html=True)
+    with col4:
+        st.markdown(f"<div style='background-color:#99ff99;padding:10px;border-radius:10px;text-align:center'><h4>{f1_score(y_test, y_pred, average='weighted'):.2f}</h4><p>F1-Score</p></div>", unsafe_allow_html=True)
 
 # ============================
 # Main Content
 # ============================
 def main_content():
-    st.title("📰 NLP Analyzer Pro - Interactive")
     if not st.session_state.get('file_uploaded', False):
         st.info("Upload a CSV file to start analysis.")
         return
