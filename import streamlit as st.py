@@ -1,21 +1,27 @@
+# ==============================
+# 🧠 Fake News Detection App
+# Built by Srashti 💜
+# ==============================
+
 import streamlit as st
 import requests
 import spacy
 from textblob import TextBlob
 import ftfy
+import os
 
-# Load SpaCy model
-try:
-    nlp = spacy.load("en_core_web_sm")
-except:
-    from spacy.cli import download
-    download("en_core_web_sm")
-    nlp = spacy.load("en_core_web_sm")
+# ====================================
+# PAGE CONFIG
+# ====================================
+st.set_page_config(
+    page_title="🧠 Fake News Detection App",
+    page_icon="📰",
+    layout="wide"
+)
 
-# --- PAGE CONFIG ---
-st.set_page_config(page_title="🧠 Fake News Detection App", page_icon="📰", layout="wide")
-
-# --- CUSTOM CSS FOR STYLING ---
+# ====================================
+# CUSTOM STYLING
+# ====================================
 st.markdown("""
     <style>
         body {
@@ -52,13 +58,38 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- HEADER ---
+# ====================================
+# CACHED SPACY MODEL LOADER
+# ====================================
+@st.cache_resource
+def load_spacy_model():
+    try:
+        return spacy.load("en_core_web_sm")
+    except:
+        from spacy.cli import download
+        download("en_core_web_sm")
+        return spacy.load("en_core_web_sm")
+
+nlp = load_spacy_model()
+
+# ====================================
+# APP HEADER
+# ====================================
 st.markdown("<h1>📰 Fake News Detector</h1>", unsafe_allow_html=True)
 st.markdown("<p class='sub-header'>Developed by 💜 Srashti • Powered by SpaCy + Google Fact Check + TextBlob</p>", unsafe_allow_html=True)
 
-# --- INPUT AREA ---
-user_input = st.text_area("🖊️ Enter a news headline or short article to analyze:", height=150, placeholder="Type or paste your news text here...")
+# ====================================
+# USER INPUT AREA
+# ====================================
+user_input = st.text_area(
+    "🖊️ Enter a news headline or short article to analyze:",
+    height=150,
+    placeholder="Type or paste your news text here..."
+)
 
+# ====================================
+# ANALYZE BUTTON
+# ====================================
 if st.button("🔍 Analyze Now"):
     if user_input.strip() == "":
         st.warning("⚠️ Please enter some text to analyze.")
@@ -67,20 +98,39 @@ if st.button("🔍 Analyze Now"):
             text = ftfy.fix_text(user_input)
             doc = nlp(text)
 
-            # Sentiment Analysis
+            # -------------------------------
+            # Sentiment Analysis (TextBlob)
+            # -------------------------------
             sentiment = TextBlob(text).sentiment.polarity
-            sentiment_label = "🟢 Positive" if sentiment > 0 else "🔴 Negative" if sentiment < 0 else "🟡 Neutral"
+            sentiment_label = (
+                "🟢 Positive" if sentiment > 0 
+                else "🔴 Negative" if sentiment < 0 
+                else "🟡 Neutral"
+            )
 
+            # -------------------------------
             # Google Fact Check API
-            API_KEY = "YOUR_GOOGLE_API_KEY"
-            url = f"https://factchecktools.googleapis.com/v1alpha1/claims:search?query={text}&key={API_KEY}"
-            response = requests.get(url)
-            data = response.json()
+            # -------------------------------
+            API_KEY = os.getenv("GOOGLE_API_KEY")  # stored in Streamlit Secrets
+            data = {}
+
+            if API_KEY:
+                try:
+                    url = f"https://factchecktools.googleapis.com/v1alpha1/claims:search?query={text}&key={API_KEY}"
+                    response = requests.get(url)
+                    data = response.json()
+                except Exception as e:
+                    st.error(f"Error connecting to Google Fact Check API: {e}")
+            else:
+                st.info("⚙️ Google API key not set. Add it in Streamlit → Settings → Secrets → GOOGLE_API_KEY")
 
             st.success("✅ Analysis Completed!")
 
-            # Display Results
+            # -------------------------------
+            # DISPLAY RESULTS
+            # -------------------------------
             st.markdown("<div class='result-box'>", unsafe_allow_html=True)
+
             st.subheader("🧩 Sentiment Analysis")
             st.write(f"Overall Sentiment: **{sentiment_label}** (score: {sentiment:.2f})")
 
@@ -89,14 +139,17 @@ if st.button("🔍 Analyze Now"):
             st.write(", ".join(entities) if entities else "No named entities found.")
 
             st.subheader("🔎 Fact Check Results")
-            if "claims" in data:
+            if data and "claims" in data:
                 for claim in data["claims"]:
                     claim_text = claim.get("text", "")
                     claim_rating = claim.get("claimReview", [{}])[0].get("textualRating", "No rating available")
                     st.info(f"📰 **Claim:** {claim_text}\n\n📊 **Rating:** {claim_rating}")
             else:
                 st.write("No relevant fact checks found for this text.")
+
             st.markdown("</div>", unsafe_allow_html=True)
 
-# --- FOOTER ---
+# ====================================
+# FOOTER
+# ====================================
 st.caption("✨ Built with ❤️ by Srashti | Powered by Streamlit, SpaCy & Google Fact Check API")
