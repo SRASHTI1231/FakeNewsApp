@@ -1,17 +1,19 @@
 import streamlit as st
 import pandas as pd
+import time
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-import time
+import plotly.express as px
+import plotly.graph_objects as go
 
 # ============================
 # Sidebar Configuration
 # ============================
 def setup_sidebar():
     st.sidebar.title("⚙️ NLP ANALYZER PRO")
-    uploaded_file = st.sidebar.file_uploader("Upload CSV file", type=["csv"], help="Upload your dataset")
+    uploaded_file = st.sidebar.file_uploader("Upload CSV file", type=["csv"])
 
     st.sidebar.header("Settings")
     use_smote = st.sidebar.checkbox("Enable SMOTE", value=True)
@@ -35,9 +37,7 @@ def setup_sidebar():
 
             text_col = st.sidebar.selectbox("Text Column", df.columns)
             target_col = st.sidebar.selectbox("Target Column", df.columns)
-            feature_type = st.sidebar.selectbox(
-                "Feature Type", ["Lexical", "Semantic", "Syntactic", "Pragmatic"]
-            )
+            feature_type = st.sidebar.selectbox("Feature Type", ["Lexical", "Semantic", "Syntactic", "Pragmatic"])
 
             st.session_state.config = {
                 'text_col': text_col,
@@ -63,7 +63,7 @@ class GoogleFactCheckAPI:
     def batch_fact_check(self, texts, max_checks=3):
         results = []
         for text in texts:
-            time.sleep(0.3)  # simulate API delay
+            time.sleep(0.2)
             results.append({
                 'text': text,
                 'has_claims': True,
@@ -82,7 +82,6 @@ def display_fact_check_results(fact_check_results):
         with st.expander(f"Text {i+1}: {result['text'][:50]}..."):
             st.write(result['text'])
             if result['has_claims']:
-                st.write(f"Claims found: {result['claim_count']}")
                 for claim in result['fact_check_results']:
                     st.markdown(f"- **Rating:** {claim['textualRating']}  | Publisher: {claim['publisher']['name']}")
             else:
@@ -102,7 +101,7 @@ def show_fact_check_section(df, config, max_checks):
         for i, text in enumerate(texts_to_check):
             result = fact_checker.batch_fact_check([text], max_checks)
             fact_check_results.extend(result)
-            progress_bar.progress((i + 1) / len(texts_to_check))
+            progress_bar.progress((i+1)/len(texts_to_check))
             time.sleep(0.1)
 
         progress_bar.empty()
@@ -114,34 +113,30 @@ def show_fact_check_section(df, config, max_checks):
 # ============================
 def perform_analysis(df, config, use_smote):
     st.markdown("<h1 style='text-align:center;color:#ff6600;'>📰 NLP ANALYZER PRO</h1>", unsafe_allow_html=True)
+    
+    # Interactive Dataset Overview
     st.markdown("### Dataset Overview")
-    
-    # Dataset metrics in cards
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.markdown(f"<div style='background-color:#ffcc99;padding:15px;border-radius:10px;text-align:center'><h3>{df.shape[0]}</h3><p>Records</p></div>", unsafe_allow_html=True)
-    with col2:
-        st.markdown(f"<div style='background-color:#99ccff;padding:15px;border-radius:10px;text-align:center'><h3>{df.shape[1]}</h3><p>Features</p></div>", unsafe_allow_html=True)
-    with col3:
-        st.markdown(f"<div style='background-color:#ff9999;padding:15px;border-radius:10px;text-align:center'><h3>{df.isnull().sum().sum()}</h3><p>Missing Values</p></div>", unsafe_allow_html=True)
-    with col4:
-        unique_classes = df[config['target_col']].nunique() if config['target_col'] in df.columns else 0
-        st.markdown(f"<div style='background-color:#99ff99;padding:15px;border-radius:10px;text-align:center'><h3>{unique_classes}</h3><p>Classes</p></div>", unsafe_allow_html=True)
-    
+    metrics = pd.DataFrame({
+        'Metric': ['Records', 'Features', 'Missing Values', 'Classes'],
+        'Value': [df.shape[0], df.shape[1], df.isnull().sum().sum(), df[config['target_col']].nunique()]
+    })
+    fig = px.bar(metrics, x='Metric', y='Value', text='Value', color='Metric', template='plotly_dark')
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Model training
     X = df[config['text_col']].astype(str)
     y = df[config['target_col']]
     if y.isnull().any():
         st.error("Target column has missing values!")
         return
 
-    # Feature: text length
     X_features = X.apply(len).values.reshape(-1,1)
     le = LabelEncoder()
     y_encoded = le.fit_transform(y)
-    
+
     X_train, X_test, y_train, y_test = train_test_split(X_features, y_encoded, test_size=0.2, random_state=42)
     
-    st.info("Training model...")
+    st.info("Training Logistic Regression model...")
     progress_bar = st.progress(0)
     model = LogisticRegression(max_iter=500)
     for i in range(100):
@@ -151,18 +146,19 @@ def perform_analysis(df, config, use_smote):
     y_pred = model.predict(X_test)
     progress_bar.empty()
     st.success("Model Training Completed ✅")
-    
-    # Performance cards
-    st.markdown("### Model Performance")
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.markdown(f"<div style='background-color:#ffcc99;padding:10px;border-radius:10px;text-align:center'><h4>{accuracy_score(y_test, y_pred):.2f}</h4><p>Accuracy</p></div>", unsafe_allow_html=True)
-    with col2:
-        st.markdown(f"<div style='background-color:#99ccff;padding:10px;border-radius:10px;text-align:center'><h4>{precision_score(y_test, y_pred, average='weighted'):.2f}</h4><p>Precision</p></div>", unsafe_allow_html=True)
-    with col3:
-        st.markdown(f"<div style='background-color:#ff9999;padding:10px;border-radius:10px;text-align:center'><h4>{recall_score(y_test, y_pred, average='weighted'):.2f}</h4><p>Recall</p></div>", unsafe_allow_html=True)
-    with col4:
-        st.markdown(f"<div style='background-color:#99ff99;padding:10px;border-radius:10px;text-align:center'><h4>{f1_score(y_test, y_pred, average='weighted'):.2f}</h4><p>F1-Score</p></div>", unsafe_allow_html=True)
+
+    # Interactive Model Performance
+    performance = pd.DataFrame({
+        'Metric': ['Accuracy', 'Precision', 'Recall', 'F1-Score'],
+        'Value': [
+            accuracy_score(y_test, y_pred),
+            precision_score(y_test, y_pred, average='weighted'),
+            recall_score(y_test, y_pred, average='weighted'),
+            f1_score(y_test, y_pred, average='weighted')
+        ]
+    })
+    fig2 = px.pie(performance, names='Metric', values='Value', title='Model Performance', hole=0.4)
+    st.plotly_chart(fig2, use_container_width=True)
 
 # ============================
 # Main Content
