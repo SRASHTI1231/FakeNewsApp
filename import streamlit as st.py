@@ -4,6 +4,7 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+import time
 
 # ============================
 # Sidebar Configuration
@@ -62,6 +63,7 @@ class GoogleFactCheckAPI:
     def batch_fact_check(self, texts, max_checks=3):
         results = []
         for text in texts:
+            time.sleep(0.3)  # simulate API delay
             results.append({
                 'text': text,
                 'has_claims': True,
@@ -92,10 +94,20 @@ def show_fact_check_section(df, config, max_checks):
     texts_to_check = texts[:num_texts_to_check]
 
     if st.button("Run Fact Check"):
-        with st.spinner("Checking facts..."):
-            fact_checker = GoogleFactCheckAPI()
-            results = fact_checker.batch_fact_check(texts_to_check, max_checks)
-            display_fact_check_results(results)
+        st.info("Fact checking in progress...")
+        progress_bar = st.progress(0)
+        fact_checker = GoogleFactCheckAPI()
+        fact_check_results = []
+
+        for i, text in enumerate(texts_to_check):
+            result = fact_checker.batch_fact_check([text], max_checks)
+            fact_check_results.extend(result)
+            progress_bar.progress((i + 1) / len(texts_to_check))
+            time.sleep(0.1)
+
+        progress_bar.empty()
+        st.success("Fact Check Completed ✅")
+        display_fact_check_results(fact_check_results)
 
 # ============================
 # Main Analysis
@@ -121,16 +133,24 @@ def perform_analysis(df, config, use_smote):
     if y.isnull().any():
         st.error("Target column has missing values!")
         return
-    
+
     # Feature: text length
     X_features = X.apply(len).values.reshape(-1,1)
     le = LabelEncoder()
     y_encoded = le.fit_transform(y)
     
     X_train, X_test, y_train, y_test = train_test_split(X_features, y_encoded, test_size=0.2, random_state=42)
+    
+    st.info("Training model...")
+    progress_bar = st.progress(0)
     model = LogisticRegression(max_iter=500)
+    for i in range(100):
+        time.sleep(0.02)
+        progress_bar.progress(i+1)
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
+    progress_bar.empty()
+    st.success("Model Training Completed ✅")
     
     # Performance cards
     st.markdown("### Model Performance")
